@@ -19,6 +19,8 @@ option(FLATBUFFERS_BUILD_FLATLIB "Enable the build of the flatbuffers library"
        ON)
 option(FLATBUFFERS_BUILD_FLATC "Enable the build of the flatbuffers compiler"
        ON)
+option(FLATBUFFERS_BUILD_FLATCLIB "Enable the build of the flatbuffers compiler lib"
+       ON)
 option(FLATBUFFERS_STATIC_FLATC "Build flatbuffers compiler with -static flag"
        OFF)
 option(FLATBUFFERS_BUILD_FLATHASH "Enable the build of flathash" OFF)
@@ -208,6 +210,64 @@ set(FlatBuffers_Compiler_SRCS
   grpc/src/compiler/swift_generator.cc
   grpc/src/compiler/ts_generator.h
   grpc/src/compiler/ts_generator.cc
+)
+
+set(FlatBuffers_CompilerLib_SRCS
+  ${FlatBuffers_Library_SRCS}
+  src/idl_gen_binary.cpp
+  src/idl_gen_text.cpp
+  src/idl_gen_cpp.cpp
+  # src/idl_gen_csharp.cpp
+  # src/idl_gen_dart.cpp
+  # src/idl_gen_kotlin.cpp
+  # src/idl_gen_kotlin_kmp.cpp
+  # src/idl_gen_go.cpp
+  # src/idl_gen_java.cpp
+  src/idl_gen_ts.cpp
+  # src/idl_gen_php.cpp
+  # src/idl_gen_python.cpp
+  # src/idl_gen_lobster.cpp
+  # src/idl_gen_rust.cpp
+  src/idl_gen_fbs.cpp
+  # src/idl_gen_grpc.cpp
+  src/idl_gen_json_schema.cpp
+  # src/idl_gen_swift.cpp
+  src/file_name_saving_file_manager.cpp
+  src/file_binary_writer.cpp
+  src/file_writer.cpp
+  src/idl_namer.h
+  src/namer.h
+  src/flatc.cpp
+  # src/flatc_main.cpp
+  src/bfbs_gen.h
+  # src/bfbs_gen_lua.h
+  # src/bfbs_gen_nim.h
+  src/bfbs_namer.h
+  include/codegen/idl_namer.h
+  include/codegen/namer.h
+  # include/codegen/python.h
+  # include/codegen/python.cc
+  include/flatbuffers/code_generators.h
+  src/binary_annotator.h
+  src/binary_annotator.cpp
+  src/annotated_binary_text_gen.h
+  src/annotated_binary_text_gen.cpp
+  # src/bfbs_gen_lua.cpp
+  # src/bfbs_gen_nim.cpp
+  src/code_generators.cpp
+  # grpc/src/compiler/schema_interface.h
+  # grpc/src/compiler/cpp_generator.h
+  # grpc/src/compiler/cpp_generator.cc
+  # grpc/src/compiler/go_generator.h
+  # grpc/src/compiler/go_generator.cc
+  # grpc/src/compiler/java_generator.h
+  # grpc/src/compiler/java_generator.cc
+  # grpc/src/compiler/python_generator.h
+  # grpc/src/compiler/python_generator.cc
+  # grpc/src/compiler/swift_generator.h
+  # grpc/src/compiler/swift_generator.cc
+  # grpc/src/compiler/ts_generator.h
+  # grpc/src/compiler/ts_generator.cc
 )
 
 set(FlatHash_SRCS
@@ -446,6 +506,15 @@ if(FLATBUFFERS_BUILD_FLATLIB)
   endif()
 endif()
 
+if(FLATBUFFERS_BUILD_FLATCLIB)
+  add_library(flatclib STATIC ${FlatBuffers_CompilerLib_SRCS})
+  target_include_directories(flatclib
+    INTERFACE
+      $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  )
+  target_link_libraries(flatclib PRIVATE $<BUILD_INTERFACE:ProjectConfig>)
+endif()
+
 if(FLATBUFFERS_BUILD_FLATC)
   add_executable(flatc ${FlatBuffers_Compiler_SRCS})
   if(FLATBUFFERS_ENABLE_PCH)
@@ -492,7 +561,7 @@ if(FLATBUFFERS_BUILD_SHAREDLIB)
   endif()
 endif()
 
-function(compile_schema SRC_FBS OPT OUT_GEN_FILE) 
+function(compile_schema SRC_FBS OPT OUT_GEN_FILE)
   get_filename_component(SRC_FBS_DIR ${SRC_FBS} PATH)
   string(REGEX REPLACE "\\.fbs$" "_generated.h" GEN_HEADER ${SRC_FBS})
   add_custom_command(
@@ -520,14 +589,14 @@ endfunction()
 if(FLATBUFFERS_BUILD_TESTS)
   add_executable(flattests ${FlatBuffers_Tests_SRCS})
   target_link_libraries(flattests PRIVATE $<BUILD_INTERFACE:ProjectConfig>)
-  target_include_directories(flattests PUBLIC 
+  target_include_directories(flattests PUBLIC
     # Ideally everything is fully qualified from the root directories
     ${CMAKE_CURRENT_SOURCE_DIR}
     ${CMAKE_CURRENT_BINARY_DIR}
     # TODO(derekbailey): update includes to fully qualify src/ and tests/
-    src 
-    tests 
-    ${CMAKE_CURRENT_BINARY_DIR}/tests 
+    src
+    tests
+    ${CMAKE_CURRENT_BINARY_DIR}/tests
   )
 
   # Have tests load data from the source directory, not the build directory.
@@ -551,14 +620,14 @@ if(FLATBUFFERS_BUILD_TESTS)
   if(FLATBUFFERS_CODE_SANITIZE)
     add_fsanitize_to_target(flattests ${FLATBUFFERS_CODE_SANITIZE})
   endif()
-  
+
   include_directories(${CMAKE_CURRENT_BINARY_DIR}/samples)
 
   add_executable(flatsamplebinary ${FlatBuffers_Sample_Binary_SRCS})
   add_executable(flatsampletext ${FlatBuffers_Sample_Text_SRCS})
   add_executable(flatsamplebfbs ${FlatBuffers_Sample_BFBS_SRCS})
 
-  # Add a library so there is a single target that the generated samples can 
+  # Add a library so there is a single target that the generated samples can
   # link too.
   if(MSVC OR ${CMAKE_VERSION} VERSION_GREATER_EQUAL "3.20.0")
     add_library(flatsample INTERFACE)
@@ -568,7 +637,7 @@ if(FLATBUFFERS_BUILD_TESTS)
 
   # Since flatsample has no sources, we have to explicitly set the linker lang.
   set_target_properties(flatsample PROPERTIES LINKER_LANGUAGE CXX)
-  
+
   compile_schema_for_samples(samples/monster.fbs "${FLATC_OPT_COMP}")
 
   target_link_libraries(flatsamplebinary PRIVATE $<BUILD_INTERFACE:ProjectConfig> flatsample)
